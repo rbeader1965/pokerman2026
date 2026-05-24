@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Poker Log">
+<title>Poker Log</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inconsolata:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --felt: #0a1f14;
+    --felt-mid: #0d2a1b;
+    --felt-light: #113524;
+    --felt-border: #1c4a30;
+    --gold: #c8973f;
+    --gold-light: #e8bb6a;
+    --gold-pale: #f5dfa0;
+    --chip-red: #c0392b;
+    --chip-blue: #2471a3;
+    --chip-green: #1e8449;
+    --text: #f0e6d0;
+    --text-muted: #7a9e87;
+    --text-dim: #3d6b4f;
+    --win: #2ecc71;
+    --loss: #e74c3c;
+    --win-bg: rgba(46,204,113,0.12);
+    --loss-bg: rgba(231,76,60,0.12);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--felt);
+    color: var(--text);
+    font-family: 'Inconsolata', monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── LAYOUT ─── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .topbar {
+    background: var(--felt-mid);
+    border-bottom: 1px solid var(--felt-border);
+    padding: calc(var(--safe-top) + 14px) 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .topbar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar-suits {
+    font-size: 15px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .navbar {
+    display: flex;
+    background: var(--felt-mid);
+    border-top: 1px solid var(--felt-border);
+    padding-bottom: var(--safe-bottom);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 12px 4px 10px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Inconsolata', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s;
+  }
+
+  .nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .nav-btn.active { color: var(--gold); }
+  .nav-btn.active svg { stroke: var(--gold); }
+
+  /* ─── SCREENS ─── */
+  .screen { display: none; min-height: 100%; }
+  .screen.active { display: block; }
+
+  /* ─── DASHBOARD ─── */
+  .dash-hero {
+    background: linear-gradient(160deg, var(--felt-light) 0%, var(--felt-mid) 100%);
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--felt-border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dash-hero::before {
+    content: '♠';
+    position: absolute;
+    right: -10px;
+    top: -20px;
+    font-size: 160px;
+    color: rgba(255,255,255,0.02);
+    pointer-events: none;
+    line-height: 1;
+  }
+
+  .hero-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .hero-amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+    transition: color 0.3s;
+  }
+
+  .hero-amount.pos { color: var(--win); }
+  .hero-amount.neg { color: var(--loss); }
+  .hero-amount.zero { color: var(--gold-light); }
+
+  .hero-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--felt-border);
+    border-top: 1px solid var(--felt-border);
+    border-bottom: 1px solid var(--felt-border);
+    margin-bottom: 20px;
+  }
+
+  .kpi {
+    background: var(--felt-mid);
+    padding: 14px 12px;
+    text-align: center;
+  }
+
+  .kpi-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gold-light);
+    margin-bottom: 3px;
+  }
+
+  .kpi-lbl {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .section {
+    padding: 0 16px;
+    margin-bottom: 24px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--felt-mid);
+    border: 1px solid var(--felt-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .chart-title {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  canvas { width: 100% !important; display: block; }
+
+  /* Recent list on dashboard */
+  .recent-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--felt-mid);
+    border: 1px solid var(--felt-border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+
+  .recent-date { font-size: 13px; color: var(--text); font-weight: 500; }
+  .recent-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .recent-amount { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; }
+  .recent-amount.pos { color: var(--win); }
+  .recent-amount.neg { color: var(--loss); }
+
+  /* ─── SESSION LOG ─── */
+  .log-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--felt-border);
+    background: var(--felt-mid);
+  }
+
+  .log-toolbar input[type="text"] {
+    flex: 1;
+    background: var(--felt-light);
+    border: 1px solid var(--felt-border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: 'Inconsolata', monospace;
+    font-size: 13px;
+    outline: none;
+  }
+
+  .log-toolbar input::placeholder { color: var(--text-dim); }
+
+  .sort-btn {
+    background: var(--felt-light);
+    border: 1px solid var(--felt-border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text-muted);
+    font-family: 'Inconsolata', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .sessions-list { padding: 12px 16px; }
+
+  .session-card {
+    background: var(--felt-mid);
+    border: 1px solid var(--felt-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.1s;
+    active-scale: 0.98;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .session-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 12px 0 0 12px;
+  }
+
+  .session-card.win-card::before { background: var(--win); }
+  .session-card.loss-card::before { background: var(--loss); }
+
+  .session-card:active { transform: scale(0.98); }
+
+  .card-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .card-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .card-hours { font-size: 11px; color: var(--text-muted); }
+
+  .card-net {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .card-net.pos { color: var(--win); }
+  .card-net.neg { color: var(--loss); }
+
+  .card-row2 {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .chip-pill {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .pill-pnl-pos { background: var(--win-bg); color: var(--win); }
+  .pill-pnl-neg { background: var(--loss-bg); color: var(--loss); }
+  .pill-bonus { background: rgba(200,151,63,0.15); color: var(--gold); }
+  .pill-tips { background: rgba(36,113,163,0.2); color: #5dade2; }
+  .pill-rate { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 30px;
+    color: var(--text-muted);
+  }
+
+  .empty-icon { font-size: 64px; opacity: 0.15; display: block; margin-bottom: 16px; }
+  .empty-text { font-size: 14px; line-height: 1.7; }
+
+  /* ─── ADD / EDIT FORM ─── */
+  .form-wrap { padding: 20px 16px 40px; }
+
+  .form-section-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    margin-top: 20px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--felt-border);
+  }
+
+  .form-section-label:first-child { margin-top: 0; }
+
+  .field { margin-bottom: 14px; }
+
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+  }
+
+  .field input[type="date"],
+  .field input[type="number"],
+  .field input[type="text"],
+  .field textarea {
+    width: 100%;
+    background: var(--felt-light);
+    border: 1px solid var(--felt-border);
+    border-radius: 10px;
+    padding: 13px 14px;
+    color: var(--text);
+    font-family: 'Inconsolata', monospace;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .field input:focus,
+  .field textarea:focus {
+    border-color: var(--gold);
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder { color: var(--text-dim); }
+
+  .field textarea { resize: none; height: 72px; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Result toggle */
+  .result-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .result-btn {
+    padding: 14px 10px;
+    border-radius: 10px;
+    border: 1.5px solid var(--felt-border);
+    background: var(--felt-light);
+    color: var(--text-dim);
+    font-family: 'Inconsolata', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .result-btn.win-active {
+    border-color: var(--win);
+    background: var(--win-bg);
+    color: var(--win);
+  }
+
+  .result-btn.loss-active {
+    border-color: var(--loss);
+    background: var(--loss-bg);
+    color: var(--loss);
+  }
+
+  /* Dollar prefix input */
+  .dollar-wrap {
+    position: relative;
+  }
+
+  .dollar-wrap::before {
+    content: '$';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold);
+    font-size: 15px;
+    font-family: 'Inconsolata', monospace;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .dollar-wrap input {
+    padding-left: 26px !important;
+  }
+
+  /* Submit btn */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #a07830, var(--gold), #c8973f);
+    border: none;
+    border-radius: 12px;
+    color: #1a0f00;
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary:active { opacity: 0.85; transform: scale(0.99); }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    border: 1px solid var(--felt-border);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-family: 'Inconsolata', monospace;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: calc(var(--safe-bottom) + 80px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--felt-light);
+    border: 1px solid var(--win);
+    color: var(--win);
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    padding: 10px 20px;
+    border-radius: 24px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ─── DETAIL SHEET ─── */
+  .sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .sheet-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .sheet {
+    background: var(--felt-mid);
+    border: 1px solid var(--felt-border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 20px calc(var(--safe-bottom) + 20px);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .sheet-overlay.open .sheet {
+    transform: translateY(0);
+  }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--felt-border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .sheet-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--gold-light);
+  }
+
+  .sheet-close {
+    background: var(--felt-light);
+    border: 1px solid var(--felt-border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  .detail-hero {
+    background: var(--felt-light);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 16px;
+    border: 1px solid var(--felt-border);
+  }
+
+  .detail-net {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .detail-net.pos { color: var(--win); }
+  .detail-net.neg { color: var(--loss); }
+  .detail-net-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; letter-spacing: 1px; }
+
+  .detail-rows {
+    background: var(--felt-light);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--felt-border);
+    margin-bottom: 14px;
+  }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--felt-border);
+    font-size: 13px;
+  }
+
+  .detail-row:last-child { border-bottom: none; }
+  .detail-row-label { color: var(--text-muted); }
+  .detail-row-val { color: var(--text); font-weight: 500; }
+  .detail-row-val.gold { color: var(--gold); }
+  .detail-row-val.green { color: var(--win); }
+  .detail-row-val.red { color: var(--loss); }
+  .detail-row-val.blue { color: #5dade2; }
+
+  .btn-danger {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    border: 1px solid rgba(231,76,60,0.4);
+    border-radius: 12px;
+    color: var(--loss);
+    font-family: 'Inconsolata', monospace;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-danger:active { background: rgba(231,76,60,0.1); }
+
+  /* ─── STATS SCREEN ─── */
+  .stats-hero {
+    background: var(--felt-mid);
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--felt-border);
+  }
+
+  .stats-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--gold-light);
+    margin-bottom: 16px;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-gold { background: rgba(200,151,63,0.2); color: var(--gold-light); }
+  .badge-green { background: var(--win-bg); color: var(--win); }
+  .badge-red { background: var(--loss-bg); color: var(--loss); }
+  .badge-blue { background: rgba(36,113,163,0.2); color: #5dade2; }
+
+  .stat-grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 16px;
+    margin-bottom: 4px;
+  }
+
+  .stat-tile {
+    background: var(--felt-mid);
+    border: 1px solid var(--felt-border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-tile-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--gold-light);
+    margin-bottom: 4px;
+  }
+
+  .stat-tile-val.pos { color: var(--win); }
+  .stat-tile-val.neg { color: var(--loss); }
+
+  .stat-tile-lbl {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* Month breakdown */
+  .month-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--felt-border);
+  }
+
+  .month-row:last-child { border-bottom: none; }
+
+  .month-name { font-size: 13px; color: var(--text); font-weight: 500; }
+  .month-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .month-pnl {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .month-pnl.pos { color: var(--win); }
+  .month-pnl.neg { color: var(--loss); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--felt-border); border-radius: 3px; }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.6) sepia(0.5) saturate(2) hue-rotate(10deg);
+    cursor: pointer;
+  }
+
+  input[type="number"] { -moz-appearance: textfield; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in { animation: fadeUp 0.25s ease forwards; }
+
+  .install-banner {
+    background: var(--felt-light);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 12px 16px 0;
+    font-size: 12px;
+    color: var(--gold-light);
+    line-height: 1.6;
+    display: none;
+  }
+
+  .install-banner strong { color: var(--gold-pale); }
+  .install-close { float: right; cursor: pointer; font-size: 16px; color: var(--gold); margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title">
+      <span>♠</span> Poker Log
+    </div>
+    <div class="topbar-suits">♥ ♦ ♣</div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div class="content" id="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="screen active" id="screen-home">
+      <div id="install-banner" class="install-banner">
+        <span class="install-close" onclick="document.getElementById('install-banner').style.display='none'">×</span>
+        <strong>Install as app:</strong> Tap your browser menu → <strong>"Add to Home screen"</strong> for full offline use.
+      </div>
+
+      <div class="dash-hero">
+        <div class="hero-label">Total Bankroll Change</div>
+        <div class="hero-amount" id="hero-net">$0.00</div>
+        <div class="hero-sub" id="hero-sub">No sessions logged yet</div>
+      </div>
+
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi">
+          <div class="kpi-val" id="kpi-sessions">0</div>
+          <div class="kpi-lbl">Sessions</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val" id="kpi-rate">—</div>
+          <div class="kpi-lbl">$/Hour</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val" id="kpi-win">—</div>
+          <div class="kpi-lbl">Win Rate</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="chart-wrap">
+          <div class="chart-title">Cumulative P&L</div>
+          <canvas id="chart-pnl" height="130"></canvas>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Recent Sessions</span>
+        </div>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+
+    <!-- ══ SESSION LOG ══ -->
+    <div class="screen" id="screen-log">
+      <div class="log-toolbar">
+        <input type="text" id="search-input" placeholder="Search sessions..." oninput="renderLog()">
+        <button class="sort-btn" onclick="toggleSort()">
+          <span id="sort-label">Date ↓</span>
+        </button>
+      </div>
+      <div class="sessions-list" id="session-list"></div>
+    </div>
+
+    <!-- ══ ADD SESSION ══ -->
+    <div class="screen" id="screen-add">
+      <div class="form-wrap">
+        <div class="form-section-label">Session Details</div>
+
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="f-date">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Hours Played</label>
+            <input type="number" id="f-hours" placeholder="0.0" step="0.5" min="0">
+          </div>
+          <div class="field">
+            <label>Location / Game</label>
+            <input type="text" id="f-game" placeholder="e.g. Bellagio NL">
+          </div>
+        </div>
+
+        <div class="form-section-label">Result</div>
+
+        <div class="result-toggle">
+          <button class="result-btn win-active" id="btn-win" onclick="setResult('win')">
+            ▲ WIN
+          </button>
+          <button class="result-btn" id="btn-loss" onclick="setResult('loss')">
+            ▼ LOSS
+          </button>
+        </div>
+
+        <div class="field">
+          <label>Amount Won / Lost</label>
+          <div class="dollar-wrap">
+            <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+
+        <div class="form-section-label">Extras</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Bonuses</label>
+            <div class="dollar-wrap">
+              <input type="number" id="f-bonus" placeholder="0.00" step="0.01" min="0">
+            </div>
+          </div>
+          <div class="field">
+            <label>Tips Received</label>
+            <div class="dollar-wrap">
+              <input type="number" id="f-tips" placeholder="0.00" step="0.01" min="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notes</label>
+          <textarea id="f-notes" placeholder="Game type, table, mood, any notes..."></textarea>
+        </div>
+
+        <button class="btn-primary" onclick="saveSession()">
+          Save Session
+        </button>
+        <button class="btn-secondary" onclick="resetForm()">Clear Form</button>
+      </div>
+    </div>
+
+    <!-- ══ STATS ══ -->
+    <div class="screen" id="screen-stats">
+      <div class="stats-hero">
+        <div class="stats-title">Analytics</div>
+        <div class="badge-row" id="badge-row"></div>
+      </div>
+
+      <div class="stat-grid2" id="stat-grid2"></div>
+
+      <div class="section">
+        <div class="chart-wrap">
+          <div class="chart-title">Session Results</div>
+          <canvas id="chart-bar" height="120"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-title">Hourly Rate by Session</div>
+          <canvas id="chart-rate" height="100"></canvas>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Monthly Breakdown</span>
+        </div>
+        <div class="chart-wrap" style="padding: 0;">
+          <div id="monthly-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end content -->
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <button class="nav-btn active" id="nav-home" onclick="showScreen('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="nav-btn" id="nav-log" onclick="showScreen('log')">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Sessions
+    </button>
+    <button class="nav-btn" id="nav-add" onclick="showScreen('add')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Add
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="showScreen('stats')">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Stats
+    </button>
+  </nav>
+</div>
+
+<!-- SESSION DETAIL SHEET -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet(event)">
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="sheet-title">Session</div>
+      <div class="sheet-close" onclick="closeSheetDirect()">✕</div>
+    </div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+/* ─── DATA ─── */
+const STORE = 'pokerlog_v1';
+let sessions = [];
+let resultMode = 'win';
+let sortAsc = false;
+let activeId = null;
+let charts = {};
+
+function load() {
+  try { sessions = JSON.parse(localStorage.getItem(STORE)) || []; }
+  catch(e) { sessions = []; }
+}
+
+function save() {
+  localStorage.setItem(STORE, JSON.stringify(sessions));
+}
+
+/* ─── NAVIGATION ─── */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  document.getElementById('content').scrollTop = 0;
+
+  if (name === 'home') renderDashboard();
+  else if (name === 'log') renderLog();
+  else if (name === 'add') { /* keep form as-is */ }
+  else if (name === 'stats') renderStats();
+}
+
+/* ─── HELPERS ─── */
+function fmt$(n, sign=true) {
+  const abs = Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (!sign) return '$' + abs;
+  return (n < 0 ? '-$' : '+$') + abs;
+}
+
+function fmtDate(d) {
+  const [y, m, day] = d.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[+m-1] + ' ' + (+day) + ', ' + y;
+}
+
+function fmtDateShort(d) {
+  const [y, m, day] = d.split('-');
+  return m + '/' + day;
+}
+
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isError ? 'var(--loss)' : 'var(--win)';
+  t.style.color = isError ? 'var(--loss)' : 'var(--win)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ─── FORM ─── */
+function setResult(r) {
+  resultMode = r;
+  document.getElementById('btn-win').className = 'result-btn' + (r==='win' ? ' win-active' : '');
+  document.getElementById('btn-loss').className = 'result-btn' + (r==='loss' ? ' loss-active' : '');
+}
+
+function resetForm() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').value = today;
+  document.getElementById('f-hours').value = '';
+  document.getElementById('f-game').value = '';
+  document.getElementById('f-amount').value = '';
+  document.getElementById('f-bonus').value = '';
+  document.getElementById('f-tips').value = '';
+  document.getElementById('f-notes').value = '';
+  setResult('win');
+}
+
+function saveSession() {
+  const date = document.getElementById('f-date').value;
+  if (!date) { showToast('Please select a date', true); return; }
+
+  const hours = parseFloat(document.getElementById('f-hours').value) || 0;
+  const game = document.getElementById('f-game').value.trim();
+  const amount = parseFloat(document.getElementById('f-amount').value) || 0;
+  const bonus = parseFloat(document.getElementById('f-bonus').value) || 0;
+  const tips = parseFloat(document.getElementById('f-tips').value) || 0;
+  const notes = document.getElementById('f-notes').value.trim();
+
+  const pnl = resultMode === 'win' ? amount : -amount;
+  const net = parseFloat((pnl + bonus + tips).toFixed(2));
+
+  const session = { id: Date.now().toString(), date, hours, game, pnl: parseFloat(pnl.toFixed(2)), bonus, tips, notes, net };
+  sessions.push(session);
+  sessions.sort((a,b) => b.date.localeCompare(a.date));
+  save();
+  resetForm();
+  showToast('✓ Session saved!');
+  showScreen('home');
+}
+
+/* ─── DASHBOARD ─── */
+function renderDashboard() {
+  const totalNet = sessions.reduce((s,x) => s+x.net, 0);
+  const totalHours = sessions.reduce((s,x) => s+x.hours, 0);
+  const wins = sessions.filter(s => s.pnl > 0).length;
+  const totalBonus = sessions.reduce((s,x) => s+x.bonus, 0);
+  const totalTips = sessions.reduce((s,x) => s+x.tips, 0);
+
+  const heroEl = document.getElementById('hero-net');
+  heroEl.textContent = fmt$(totalNet);
+  heroEl.className = 'hero-amount ' + (totalNet > 0 ? 'pos' : totalNet < 0 ? 'neg' : 'zero');
+
+  const subEl = document.getElementById('hero-sub');
+  if (!sessions.length) {
+    subEl.textContent = 'No sessions logged yet';
+  } else {
+    subEl.textContent = `${sessions.length} session${sessions.length!==1?'s':''} · ${totalHours.toFixed(1)}h played · Extras: ${fmt$(totalBonus+totalTips,false)}`;
+  }
+
+  document.getElementById('kpi-sessions').textContent = sessions.length;
+  document.getElementById('kpi-rate').textContent = totalHours > 0 ? '$' + (totalNet/totalHours).toFixed(1) : '—';
+  document.getElementById('kpi-win').textContent = sessions.length > 0 ? Math.round(wins/sessions.length*100) + '%' : '—';
+
+  renderPnlChart();
+
+  // Recent
+  const rec = document.getElementById('recent-list');
+  if (!sessions.length) {
+    rec.innerHTML = '<div class="empty-state"><span class="empty-icon">♣</span><div class="empty-text">No sessions yet.<br>Tap <strong>Add</strong> to log your first game.</div></div>';
+    return;
+  }
+  const recent = sessions.slice(0, 5);
+  rec.innerHTML = recent.map(s => `
+    <div class="recent-item animate-in" onclick="openSheet('${s.id}')">
+      <div>
+        <div class="recent-date">${fmtDate(s.date)}</div>
+        <div class="recent-meta">${s.hours}h${s.game ? ' · ' + s.game : ''}</div>
+      </div>
+      <div class="recent-amount ${s.net>=0?'pos':'neg'}">${fmt$(s.net)}</div>
+    </div>
+  `).join('');
+}
+
+function renderPnlChart() {
+  const ctx = document.getElementById('chart-pnl').getContext('2d');
+  if (charts.pnl) { charts.pnl.destroy(); delete charts.pnl; }
+  if (!sessions.length) return;
+
+  const sorted = [...sessions].sort((a,b) => a.date.localeCompare(b.date));
+  let cum = 0;
+  const data = sorted.map(s => { cum = parseFloat((cum+s.net).toFixed(2)); return cum; });
+  const labels = sorted.map(s => fmtDateShort(s.date));
+  const isPos = data[data.length-1] >= 0;
+
+  charts.pnl = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: isPos ? '#2ecc71' : '#e74c3c',
+        backgroundColor: isPos ? 'rgba(46,204,113,0.08)' : 'rgba(231,76,60,0.08)',
+        borderWidth: 2, fill: true, tension: 0.3,
+        pointRadius: data.length > 20 ? 0 : 3,
+        pointBackgroundColor: '#c8973f',
+        pointHoverRadius: 5
+      }]
+    },
+    options: chartOptions('$')
+  });
+}
+
+function chartOptions(prefix='', isBar=false) {
+  return {
+    responsive: true, animation: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0d2a1b', borderColor: '#1c4a30', borderWidth: 1,
+        titleColor: '#c8973f', bodyColor: '#f0e6d0',
+        callbacks: { label: ctx => prefix + (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#3d6b4f', font: { size: 10, family: "'Inconsolata'" }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+      y: { ticks: { color: '#3d6b4f', font: { size: 10, family: "'Inconsolata'" }, callback: v => prefix + v }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  };
+}
+
+/* ─── LOG ─── */
+function toggleSort() {
+  sortAsc = !sortAsc;
+  document.getElementById('sort-label').textContent = sortAsc ? 'Date ↑' : 'Date ↓';
+  renderLog();
+}
+
+function renderLog() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let list = [...sessions];
+  if (q) list = list.filter(s =>
+    s.date.includes(q) || (s.game||'').toLowerCase().includes(q) || (s.notes||'').toLowerCase().includes(q)
+  );
+  if (sortAsc) list.reverse();
+
+  const el = document.getElementById('session-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-icon">♦</span><div class="empty-text">' + (q ? 'No matching sessions.' : 'No sessions yet.') + '</div></div>';
+    return;
+  }
+
+  el.innerHTML = list.map(s => {
+    const pills = [];
+    if (s.pnl !== 0) pills.push(`<span class="chip-pill ${s.pnl>=0?'pill-pnl-pos':'pill-pnl-neg'}">${s.pnl>=0?'Win':'Loss'} ${fmt$(s.pnl,false)}</span>`);
+    if (s.bonus > 0) pills.push(`<span class="chip-pill pill-bonus">Bonus ${fmt$(s.bonus,false)}</span>`);
+    if (s.tips > 0) pills.push(`<span class="chip-pill pill-tips">Tips ${fmt$(s.tips,false)}</span>`);
+    if (s.hours > 0) pills.push(`<span class="chip-pill pill-rate">${(s.net/s.hours).toFixed(1)}/hr</span>`);
+    return `
+      <div class="session-card ${s.net>=0?'win-card':'loss-card'}" onclick="openSheet('${s.id}')">
+        <div class="card-row1">
+          <div>
+            <div class="card-date">${fmtDate(s.date)}</div>
+            <div class="card-hours">${s.hours}h played${s.game?' · '+s.game:''}</div>
+          </div>
+          <div class="card-net ${s.net>=0?'pos':'neg'}">${fmt$(s.net)}</div>
+        </div>
+        <div class="card-row2">${pills.join('')}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ─── DETAIL SHEET ─── */
+function openSheet(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  activeId = id;
+
+  document.getElementById('sheet-title').textContent = fmtDate(s.date);
+
+  const hourlyRate = s.hours > 0 ? (s.net / s.hours).toFixed(2) : null;
+
+  document.getElementById('sheet-body').innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-net ${s.net>=0?'pos':'neg'}">${fmt$(s.net)}</div>
+      <div class="detail-net-label">Total Net (P&L + Bonus + Tips)</div>
+    </div>
+    <div class="detail-rows">
+      <div class="detail-row"><span class="detail-row-label">Date</span><span class="detail-row-val">${fmtDate(s.date)}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Hours Played</span><span class="detail-row-val">${s.hours}h</span></div>
+      ${s.game ? `<div class="detail-row"><span class="detail-row-label">Location / Game</span><span class="detail-row-val">${s.game}</span></div>` : ''}
+      <div class="detail-row"><span class="detail-row-label">Result</span><span class="detail-row-val ${s.pnl>=0?'green':'red'}">${s.pnl>=0?'Win':'Loss'}: ${fmt$(s.pnl,false)}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Bonuses</span><span class="detail-row-val gold">${fmt$(s.bonus,false)}</span></div>
+      <div class="detail-row"><span class="detail-row-label">Tips Received</span><span class="detail-row-val blue">${fmt$(s.tips,false)}</span></div>
+      ${hourlyRate ? `<div class="detail-row"><span class="detail-row-label">Hourly Rate</span><span class="detail-row-val">${hourlyRate.startsWith('-')?hourlyRate:'$'+hourlyRate}/hr</span></div>` : ''}
+      ${s.notes ? `<div class="detail-row"><span class="detail-row-label">Notes</span><span class="detail-row-val" style="max-width:60%;text-align:right;font-size:12px">${s.notes}</span></div>` : ''}
+    </div>
+    <button class="btn-danger" onclick="deleteSession()">Delete This Session</button>
+  `;
+
+  document.getElementById('sheet-overlay').classList.add('open');
+}
+
+function closeSheet(e) {
+  if (e.target === document.getElementById('sheet-overlay')) closeSheetDirect();
+}
+
+function closeSheetDirect() {
+  document.getElementById('sheet-overlay').classList.remove('open');
+  activeId = null;
+}
+
+function deleteSession() {
+  if (!activeId) return;
+  if (!confirm('Delete this session? This cannot be undone.')) return;
+  sessions = sessions.filter(s => s.id !== activeId);
+  save();
+  closeSheetDirect();
+  renderLog();
+  renderDashboard();
+  showToast('Session deleted');
+}
+
+/* ─── STATS ─── */
+function renderStats() {
+  if (!sessions.length) {
+    document.getElementById('badge-row').innerHTML = '<span class="badge badge-gold">No data yet</span>';
+    document.getElementById('stat-grid2').innerHTML = '';
+    document.getElementById('monthly-list').innerHTML = '';
+    return;
+  }
+
+  const totalNet = sessions.reduce((s,x) => s+x.net, 0);
+  const totalHours = sessions.reduce((s,x) => s+x.hours, 0);
+  const wins = sessions.filter(s => s.pnl > 0).length;
+  const losses = sessions.filter(s => s.pnl < 0).length;
+  const totalBonus = sessions.reduce((s,x) => s+x.bonus, 0);
+  const totalTips = sessions.reduce((s,x) => s+x.tips, 0);
+  const hourly = totalHours > 0 ? (totalNet/totalHours) : 0;
+  const winPct = Math.round(wins/sessions.length*100);
+  const best = sessions.reduce((a,b) => a.net > b.net ? a : b);
+  const worst = sessions.reduce((a,b) => a.net < b.net ? a : b);
+  const avgSess = totalNet / sessions.length;
+
+  // Badges
+  const badges = [];
+  if (totalNet > 0) badges.push(`<span class="badge badge-green">+${fmt$(totalNet,false)} overall</span>`);
+  else badges.push(`<span class="badge badge-red">${fmt$(totalNet)} overall</span>`);
+  badges.push(`<span class="badge badge-gold">${winPct}% win rate</span>`);
+  if (hourly > 0) badges.push(`<span class="badge badge-blue">$${hourly.toFixed(0)}/hr avg</span>`);
+  document.getElementById('badge-row').innerHTML = badges.join('');
+
+  // Tiles
+  const tiles = [
+    { val: fmt$(totalNet), cls: totalNet>=0?'pos':'neg', lbl: 'Total Net' },
+    { val: '$'+Math.abs(hourly).toFixed(2)+'/hr', cls: hourly>=0?'pos':'neg', lbl: 'Hourly Rate' },
+    { val: fmt$(best.net), cls: 'pos', lbl: 'Best Session' },
+    { val: fmt$(worst.net), cls: 'neg', lbl: 'Worst Session' },
+    { val: fmt$(avgSess), cls: avgSess>=0?'pos':'neg', lbl: 'Avg Session' },
+    { val: fmt$(totalBonus+totalTips,false), cls: '', lbl: 'Bonus + Tips' },
+    { val: wins + ' / ' + losses, cls: '', lbl: 'W / L' },
+    { val: totalHours.toFixed(1) + 'h', cls: '', lbl: 'Total Hours' },
+  ];
+  document.getElementById('stat-grid2').innerHTML = tiles.map(t =>
+    `<div class="stat-tile"><div class="stat-tile-val ${t.cls}">${t.val}</div><div class="stat-tile-lbl">${t.lbl}</div></div>`
+  ).join('');
+
+  renderBarChart();
+  renderRateChart();
+  renderMonthly();
+}
+
+function renderBarChart() {
+  const ctx = document.getElementById('chart-bar').getContext('2d');
+  if (charts.bar) { charts.bar.destroy(); delete charts.bar; }
+  const sorted = [...sessions].sort((a,b) => a.date.localeCompare(b.date));
+  charts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => fmtDateShort(s.date)),
+      datasets: [{
+        data: sorted.map(s => s.net),
+        backgroundColor: sorted.map(s => s.net >= 0 ? 'rgba(46,204,113,0.65)' : 'rgba(231,76,60,0.65)'),
+        borderRadius: 4
+      }]
+    },
+    options: chartOptions('$', true)
+  });
+}
+
+function renderRateChart() {
+  const ctx = document.getElementById('chart-rate').getContext('2d');
+  if (charts.rate) { charts.rate.destroy(); delete charts.rate; }
+  const sorted = [...sessions].filter(s => s.hours > 0).sort((a,b) => a.date.localeCompare(b.date));
+  if (!sorted.length) return;
+  charts.rate = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => fmtDateShort(s.date)),
+      datasets: [{
+        data: sorted.map(s => parseFloat((s.net/s.hours).toFixed(2))),
+        backgroundColor: sorted.map(s => (s.net/s.hours) >= 0 ? 'rgba(200,151,63,0.55)' : 'rgba(231,76,60,0.5)'),
+        borderRadius: 4
+      }]
+    },
+    options: chartOptions('$', true)
+  });
+}
+
+function renderMonthly() {
+  const byMonth = {};
+  sessions.forEach(s => {
+    const key = s.date.substring(0,7);
+    if (!byMonth[key]) byMonth[key] = { net:0, hours:0, count:0 };
+    byMonth[key].net += s.net;
+    byMonth[key].hours += s.hours;
+    byMonth[key].count++;
+  });
+
+  const months = Object.keys(byMonth).sort().reverse();
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  document.getElementById('monthly-list').innerHTML = months.map(m => {
+    const [y, mo] = m.split('-');
+    const d = byMonth[m];
+    const pnl = parseFloat(d.net.toFixed(2));
+    return `<div class="month-row">
+      <div>
+        <div class="month-name">${monthNames[+mo-1]} ${y}</div>
+        <div class="month-meta">${d.count} session${d.count!==1?'s':''} · ${d.hours.toFixed(1)}h</div>
+      </div>
+      <div class="month-pnl ${pnl>=0?'pos':'neg'}">${fmt$(pnl)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ─── INIT ─── */
+load();
+resetForm();
+renderDashboard();
+
+// Show install banner if not standalone
+if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.standalone) {
+  setTimeout(() => {
+    if (sessions.length === 0) {
+      document.getElementById('install-banner').style.display = 'block';
+    }
+  }, 3000);
+}
+
+// Register service worker for offline
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

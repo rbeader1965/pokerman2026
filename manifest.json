@@ -1,0 +1,26 @@
+{
+  "name": "Poker Log",
+  "short_name": "Poker Log",
+  "description": "Track your poker sessions — P&L, hours, bonuses and tips",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a1f14",
+  "theme_color": "#0a1f14",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230a1f14'/><text x='96' y='130' font-size='110' text-anchor='middle' fill='%23c8973f'>♠</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230a1f14'/><text x='256' y='360' font-size='300' text-anchor='middle' fill='%23c8973f'>♠</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "utilities"],
+  "lang": "en-US"
+}
